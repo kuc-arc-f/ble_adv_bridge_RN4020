@@ -1,0 +1,17 @@
+﻿RN4020 , UART command
+*) UART : 9600 baud 
+
+### adv Send
+SN,D11000011000012
+R,1 ( 再起動)
+A   (adv start)
+
+### 初回のみ
++      //Echo on
+SF,1  //設定初期化
+SS,40000000 (BatteryService を選択)
+SR,00000000 (RN4020 機能変更なし)
+
+
+
+
