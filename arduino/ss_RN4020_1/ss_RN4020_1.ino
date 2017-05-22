@@ -1,6 +1,7 @@
-/* SoftwareSerial test, RN4020 BLE
+/* 
+  SoftwareSerial, RN4020 BLE
+ *  v 0.9.2
 */
-
 #include <SoftwareSerial.h>
 SoftwareSerial mySerial(5, 6); /* RX:D5, TX:D6 */
 String mBuff="";
@@ -115,13 +116,13 @@ void proc_sendCmd(){
   char cBuff[24 +1];
   int iSenNum= getTempNum();
   Serial.println("iSenNum=" + String(iSenNum) );
-  sprintf(cBuff , "SN,D11%06d000001\r", iSenNum );
+  sprintf(cBuff , "SN,D12%06d000001\r", iSenNum );
   //SN
   Serial.println( "#Start SN, cBuff="+  String(cBuff)  );
    mySerial.print(String(cBuff) );
    if( Is_resWait("AOK", iWaitTm ) == mNG_CODE ){ return; }
    else{Serial.println("#OK SN" ); };
-//   proc_getSSerial();
+   proc_getSSerial();
 //   wait_forSec(3);
    //R
    Serial.println( "#Start R" );
@@ -134,7 +135,8 @@ void proc_sendCmd(){
    
    //A
    Serial.println( "#Start A" );
-   mySerial.print("A\r");
+//   mySerial.print("A\r");
+   mySerial.print("A,0064,07D0\r");    //100msec, total= 2000mSec
   if( Is_resWait("AOK", iWaitTm ) == mNG_CODE ){ return; }
    else{Serial.println("#OK A" ); };
    proc_getSSerial();
@@ -156,7 +158,8 @@ void setup() {
   mySerial.begin( 9600 );
   Serial.println("#Start-setup-SS");
   //wait
-  wait_forSec(3);  
+  wait_forSec(3);
+  proc_getSSerial(); //cear-buff
   proc_sendCmd();
   Serial.println( "mTimer="+ String(mTimer) );  
 }
@@ -171,3 +174,4 @@ void loop() {
   }
 
 }
+

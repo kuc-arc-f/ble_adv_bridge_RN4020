@@ -1,12 +1,12 @@
 ﻿#  RN4020 BLE ,+ esp32 wifi Bridge (BETA)
 
- Version: 0.9.1
+ Version: 0.9.2
 
  Author  : Kouji Nakashima / kuc-arc-f.com
 
  date    : 2017/05/20
 
- update :  
+ update : 2017/05/22
 ***
 
 
