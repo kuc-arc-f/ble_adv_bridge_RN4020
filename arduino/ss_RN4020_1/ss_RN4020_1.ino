@@ -1,6 +1,6 @@
 /* 
   SoftwareSerial, RN4020 BLE
- *  v 0.9.2
+ *  v 0.9.3
 */
 #include <SoftwareSerial.h>
 SoftwareSerial mySerial(5, 6); /* RX:D5, TX:D6 */
@@ -9,7 +9,17 @@ const int mVoutPin = 0;
 const int mOK_CODE=1;
 const int mNG_CODE=0;
 uint32_t mTimer=0;
-const int mNextSec= 30; //Sec
+uint32_t mTimer_runMax= 0;;
+// const int mNextSec= 30; //Sec
+const int mNextSec   = 300; //Sec
+const int mMax_runSec= 30; //Sec
+
+const int mMode_RUN  = 1;
+const int mMode_WAIT = 2; 
+int mMode =0;
+
+const char mDevice_name[3+1]="D12";
+
 /*
  value: check string
  maxMsec : max Wait (mSec)
@@ -116,7 +126,9 @@ void proc_sendCmd(){
   char cBuff[24 +1];
   int iSenNum= getTempNum();
   Serial.println("iSenNum=" + String(iSenNum) );
-  sprintf(cBuff , "SN,D12%06d000001\r", iSenNum );
+  //sprintf(cBuff , "SN,D11%06d000001\r", iSenNum );
+  sprintf(cBuff , "SN,%s%06d000001\r", mDevice_name,iSenNum );
+  // mDevice_name
   //SN
   Serial.println( "#Start SN, cBuff="+  String(cBuff)  );
    mySerial.print(String(cBuff) );
@@ -141,7 +153,8 @@ void proc_sendCmd(){
    else{Serial.println("#OK A" ); };
    proc_getSSerial();
    mCounter= mCounter+1;
-   mTimer = millis() + (mNextSec * 1000);
+   wait_forSec(3 );
+   // mTimer = millis() + ((uint32_t)mNextSec * 1000);
 }
 
 //
@@ -153,14 +166,15 @@ void wait_forSec(int wait){
 }
 //
 void setup() {
-  // 115200
+  mMode = mMode_RUN;
   Serial.begin( 9600 );
   mySerial.begin( 9600 );
   Serial.println("#Start-setup-SS");
   //wait
   wait_forSec(3);
   proc_getSSerial(); //cear-buff
-  proc_sendCmd();
+// proc_sendCmd();
+  mTimer_runMax =  ((uint32_t)mMax_runSec * 1000) + millis();
   Serial.println( "mTimer="+ String(mTimer) );  
 }
 
@@ -168,10 +182,24 @@ void setup() {
 void loop() {
 //  delay(100);
 //  Serial.println( "mTimer="+ String(mTimer) + ",millis=" + String(millis()) );
-  if(mTimer < millis() ){
-      mTimer = millis() + (mNextSec * 1000);
+/*
+  if( millis() > mTimer ){
+      mTimer = millis() + ((uint32_t) mNextSec * 1000);
       proc_sendCmd();
   }
-
+*/
+  if(mMode ==mMode_RUN){
+      if(millis() < mTimer_runMax){
+        proc_sendCmd();
+      }else{
+          mTimer = millis() + ((uint32_t) mNextSec * 1000);
+          mMode = mMode_WAIT;
+      }
+  }else{
+    if(millis() >mTimer){
+      mTimer_runMax =  ((uint32_t)mMax_runSec * 1000) + millis();
+      mMode = mMode_RUN;
+    }  
+  }
 }
 
