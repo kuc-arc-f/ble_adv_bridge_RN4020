@@ -75,6 +75,7 @@ const char *adv_name4="D04";
 const char *adv_name5="D05";
 //RN4020
 const char *adv_name11="D11";
+const char *adv_name12="D12";
 
 static char tar_dev_mac[6] = {0xff, 0xb5, 0x30, 0x4e, 0x0a, 0xcb};
 static const char tar_char[] = {0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x03, 0x00, 0x40, 0x6e};
@@ -84,7 +85,7 @@ static esp_bd_addr_t server_dba;
 
 static esp_ble_scan_params_t ble_scan_params = {
     .scan_type              = BLE_SCAN_TYPE_ACTIVE,
-    .own_addr_type          = ESP_PUBLIC_ADDR,
+    .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
     .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
     .scan_interval          = 0x50,
     .scan_window            = 0x30
@@ -686,6 +687,8 @@ void proc_httpStart(){
 //    char cValue3_3[6+1];
     char cValue11_1[6+1];
     char cValue11_2[6+1];
+    char cValue12_1[6+1];
+    char cValue12_2[6+1];
     
     //d1
     dataModel_get_datByAdvname((char *)adv_name1 ,1 , cValue );
@@ -699,6 +702,11 @@ void proc_httpStart(){
     dataModel_get_datByAdvname((char *)adv_name11 ,2 , cValue11_2 );
     printf("cValue11_1=%s\n", cValue11_1 );
     printf("cValue11_2=%s\n", cValue11_2 );
+    dataModel_get_datByAdvname((char *)adv_name12 ,1 , cValue12_1 );
+    dataModel_get_datByAdvname((char *)adv_name12 ,2 , cValue12_2 );
+    printf("cValue12_1=%s\n", cValue12_1 );
+    printf("cValue12_2=%s\n", cValue12_2 );
+    
     
     char cBuff[24+1];
     sReq1[0]=0x00;
@@ -716,11 +724,15 @@ void proc_httpStart(){
     	sprintf(cBuff, "&field4=%s", cValue11_1);
     	strcat(sReq1, cBuff );
     }
-    if( strlen(cValue11_2) > 0){
-    	sprintf(cBuff, "&field5=%s", cValue11_2);
+    //if( strlen(cValue11_2) > 0){
+    //	sprintf(cBuff, "&field5=%s", cValue11_2);
+    //	strcat(sReq1, cBuff );
+    //}
+	//d12
+    if( strlen(cValue12_1) > 0){
+    	sprintf(cBuff, "&field5=%s", cValue12_1);
     	strcat(sReq1, cBuff );
     }
-
     
 //    sprintf(sReq1, "field1=%s&field2=%s" ,  cValue, cValue2 );
     set_requestBuff( sReq1 );
@@ -763,8 +775,9 @@ void app_main()
 {
 	//data
 	dataModel_set_advName(0,  (char *)adv_name1 );
+//	dataModel_set_advName(1,  (char *)adv_name2 );
 	dataModel_set_advName(1,  (char *)adv_name11 );
-  //dataModel_set_advName(2,  (char *)adv_name3 );
+	dataModel_set_advName(2,  (char *)adv_name12 );
 	
 	//bt
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();

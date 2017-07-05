@@ -1,53 +1,37 @@
 /* 
-  SoftwareSerial, RN4020 BLE
- *  v 0.9.3
+  SoftwareSerial, RN4020 BLE (Low Power version)
+ *  v 0.9.4
 */
+#include <avr/sleep.h>
+#include <avr/wdt.h>
 #include <SoftwareSerial.h>
 SoftwareSerial mySerial(5, 6); /* RX:D5, TX:D6 */
 String mBuff="";
 const int mVoutPin = 0;
+const int mPinBLE =8;
 const int mOK_CODE=1;
 const int mNG_CODE=0;
-uint32_t mTimer=0;
-uint32_t mTimer_runMax= 0;;
-// const int mNextSec= 30; //Sec
+uint32_t mTimer_runMax= 0;
+// uint32_t mTimer_BLE= 0;
 const int mNextSec   = 300; //Sec
-const int mMax_runSec= 30; //Sec
+// const int mMax_runSec= 30; //Sec
+const int mMax_runSec= 20; //Sec
+const int mMax_BLE   = 5; //Sec
 
 const int mMode_RUN  = 1;
 const int mMode_WAIT = 2; 
 int mMode =0;
 
-const char mDevice_name[3+1]="D12";
+const char mDevice_name[3+1]="D11";
+// LOW power
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+volatile int wdt_cycle;
 
-/*
- value: check string
- maxMsec : max Wait (mSec)
-*/
-/*
-int Is_validResult(String value, int maxMsec ){
-  int ret= mNG_CODE;
-  uint32_t tm_maxWait=millis();
-  int iLen= value.length();
-  String sBuff="";
-  while( mySerial.available() ){
-    char c= mySerial.read();
-Serial.print( c );
-    sBuff.concat(c );
-  }
-  Serial.println("");
-  if(sBuff.length() < 1){ return ret; }
-    int iLenBuff= sBuff.length();
-    Serial.println("iLenBuff="+ String(iLenBuff)) ;
-    int iSt=iLen+ 2; 
-    String sRecv = sBuff.substring((iLenBuff -iSt ) , iLen );
-    Serial.println( "sBuff="+ sBuff+ " ,sRecv="+ sRecv );          
-    if(sRecv == value ){
-      ret= mOK_CODE;
-    }
-  return ret;  
-}
-*/
 //
 long convert_Map(long x, long in_min, long in_max, long out_min, long out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -76,7 +60,6 @@ Serial.println("SValue="+ String(SValue)   +" , voltage="  +String(voltage ) );
 //
 int Is_resWait(String value, uint32_t maxMsec ){
   int ret= mNG_CODE;
-  
   uint32_t tm_maxWait=millis();
   int iLen= value.length();
   String sBuff="";
@@ -87,8 +70,7 @@ int Is_resWait(String value, uint32_t maxMsec ){
             Serial.print( c );
             if( (c != 0x0a ) && (c != 0x0d ) ){
                 sBuff.concat(c );
-            }
-            
+            }            
         } //end_while
         if(  (int )sBuff.length() >= iLen ){ iBool=0;  }      
         delay(100);
@@ -101,7 +83,6 @@ int Is_resWait(String value, uint32_t maxMsec ){
     Serial.println("");
     if(sBuff.length() < 1){ return ret; }
     int iLenBuff= sBuff.length();
-    //int iSt=iLenBuff -(iLen+ 2);
     int iSt=iLenBuff -(iLen); 
     Serial.println("iLenBuff="+ String(iLenBuff)+",iSt="+ String(iSt) ) ;
     String sRecv = sBuff.substring(iSt   , iLen );
@@ -154,12 +135,11 @@ void proc_sendCmd(){
    proc_getSSerial();
    mCounter= mCounter+1;
    wait_forSec(3 );
-   // mTimer = millis() + ((uint32_t)mNextSec * 1000);
 }
 
 //
 void wait_forSec(int wait){
-    for(int i=0; i<wait; i++){
+   for(int i=0; i<wait; i++){
     delay(1000);
     Serial.println("#wait_forMsec: "+ String(i) );    
   }
@@ -167,39 +147,79 @@ void wait_forSec(int wait){
 //
 void setup() {
   mMode = mMode_RUN;
+  pinMode(mPinBLE ,OUTPUT);
   Serial.begin( 9600 );
   mySerial.begin( 9600 );
   Serial.println("#Start-setup-SS");
+  setup_watchdog(6 );                    // WDT setting
   //wait
   wait_forSec(3);
   proc_getSSerial(); //cear-buff
-// proc_sendCmd();
-  mTimer_runMax =  ((uint32_t)mMax_runSec * 1000) + millis();
-  Serial.println( "mTimer="+ String(mTimer) );  
+  // mTimer_runMax =  ((uint32_t)mMax_runSec * 1000) + millis();
 }
-
 //
 void loop() {
+  //const int iWait =2000;
 //  delay(100);
 //  Serial.println( "mTimer="+ String(mTimer) + ",millis=" + String(millis()) );
-/*
-  if( millis() > mTimer ){
-      mTimer = millis() + ((uint32_t) mNextSec * 1000);
-      proc_sendCmd();
-  }
-*/
   if(mMode ==mMode_RUN){
+      if(mTimer_runMax <= 0 ){
+          mTimer_runMax =  ((uint32_t)mMax_runSec * 1000) + millis();
+      }
       if(millis() < mTimer_runMax){
-        proc_sendCmd();
+          digitalWrite(mPinBLE, HIGH);
+          proc_sendCmd();
       }else{
-          mTimer = millis() + ((uint32_t) mNextSec * 1000);
+          mTimer_runMax=0;
+          digitalWrite(mPinBLE,LOW  );
           mMode = mMode_WAIT;
       }
   }else{
-    if(millis() >mTimer){
-      mTimer_runMax =  ((uint32_t)mMax_runSec * 1000) + millis();
-      mMode = mMode_RUN;
-    }  
+    mMode = mMode_RUN;
+    for(int i=0; i< mNextSec ; i++){
+        system_sleep();                       // power down ,wake up WDT 
+        //Serial.print("i=");
+        //delay(15);
+        //Serial.println(i);
+        //delay(15);
+    }
   }
+  
 }
+
+//
+void system_sleep() {
+  cbi(ADCSRA,ADEN);                     // ADC power off
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);  // power down mode
+  sleep_enable();
+  sleep_mode();                         // sleep
+  sleep_disable();                      // WDT time up
+  sbi(ADCSRA,ADEN);                     // ADC ON
+}
+
+// WDT setting, param : time
+// 0=16ms, 1=32ms,2=64ms,3=128ms,4=250ms,5=500ms
+// 6=1 sec,7=2 sec, 8=4 sec, 9= 8sec
+void setup_watchdog(int ii) {           // 
+  byte bb;
+  int ww;
+  if (ii > 9 ) ii=9;
+  bb=ii & 7;
+  if (ii > 7) bb|= (1<<5);
+  bb|= (1<<WDCE);
+  ww=bb;
+  MCUSR &= ~(1<<WDRF);
+  // start timed sequence
+  WDTCSR |= (1<<WDCE) | (1<<WDE);
+  // set new watchdog timeout value
+  WDTCSR = bb;
+  WDTCSR |= _BV(WDIE);
+}  //setup_watchdog
+
+ISR(WDT_vect) {                         // WDT, time Up process
+  wdt_cycle++;           
+}
+
+
+
 
